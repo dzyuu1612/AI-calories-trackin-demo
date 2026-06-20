@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -872,7 +873,7 @@ fun AiPlannerTab(viewModel: NutritionViewModel) {
 
     var selectedPlanCategory by remember { mutableStateOf("All") }
     var foodSearchQuery by remember { mutableStateOf("") }
-    var selectedDietPlanGoal by remember { mutableStateOf("Weight Loss") }
+    var selectedDietPlanGoal by rememberSaveable { mutableStateOf("Weight Loss") }
     
     // Custom Grounded Prompt State
     var dietaryPreference by remember { mutableStateOf("Balanced") }
@@ -1547,13 +1548,15 @@ fun AiPlannerTab(viewModel: NutritionViewModel) {
                                     height = profile.heightCm,
                                     calorieGoal = plan.calorieTarget,
                                     waterGoal = if (plan.goal == "Muscle Gain") 3200 else if (plan.goal == "Weight Loss") 2500 else 2800,
-                                    stepsGoal = if (plan.goal == "Muscle Gain") 12000 else 10000
+                                    stepsGoal = if (plan.goal == "Muscle Gain") 12000 else 10000,
+                                    onComplete = {
+                                        Toast.makeText(
+                                            context,
+                                            "Successfully activated target profile guidelines! (Base limit set to ${plan.calorieTarget} kcal)",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                 )
-                                Toast.makeText(
-                                    context,
-                                    "Successfully activated target profile guidelines! (Base limit set to ${plan.calorieTarget} kcal)",
-                                    Toast.LENGTH_LONG
-                                ).show()
                             },
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -1668,13 +1671,15 @@ fun AiPlannerTab(viewModel: NutritionViewModel) {
                                                 protein = m.protein,
                                                 carbs = m.carbs,
                                                 fat = m.fat,
-                                                mealType = m.mealType
+                                                mealType = m.mealType,
+                                                onComplete = {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Successfully logged ${m.foodName} to today's diary!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
                                             )
-                                            Toast.makeText(
-                                                context,
-                                                "Successfully logged ${m.foodName} to today's diary!",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
                                         },
                                         shape = RoundedCornerShape(6.dp),
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),

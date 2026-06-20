@@ -202,10 +202,11 @@ object GeminiClient {
             """.trimIndent()
         }
 
+        val baseInstruction = "You are an automated premium food recognition engine tailored for global gastronomy and precise calorie estimation. You must explicitly prioritize Vietnamese nutritional data and portion sizing accuracy when the user scans local or regional cuisine (including iconic specialties like Pho, Banh Mi, Bun Cha, and regional variations)."
         val sysInstructionText = if (!customSystemInstruction.isNullOrBlank()) {
-            customSystemInstruction
+            "$baseInstruction\n\nUser custom instruction settings: $customSystemInstruction"
         } else {
-            "You are an automated premium food recognition engine tailored for global gastronomy and precise calorie estimation. You must explicitly prioritize Vietnamese nutritional data and portion sizing accuracy when the user scans local or regional cuisine (including iconic specialties like Pho, Banh Mi, Bun Cha, and regional variations)."
+            baseInstruction
         }
 
         val request = GenerateContentRequest(

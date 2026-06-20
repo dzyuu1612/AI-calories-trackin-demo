@@ -531,7 +531,7 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
 
     // --- Calorie & Food Logging ---
 
-    fun addMeal(name: String, calories: Int, protein: Float, carbs: Float, fat: Float, mealType: String) {
+    fun addMeal(name: String, calories: Int, protein: Float, carbs: Float, fat: Float, mealType: String, onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
             val meal = MealLog(
                 foodName = name,
@@ -542,6 +542,7 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
                 mealType = mealType
             )
             repository.logMeal(meal)
+            onComplete?.invoke()
         }
     }
 
@@ -585,7 +586,7 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
 
     // --- Profile Editing ---
 
-    fun updateUserProfile(name: String, age: Int, weight: Float, height: Float, calorieGoal: Int, waterGoal: Int, stepsGoal: Int) {
+    fun updateUserProfile(name: String, age: Int, weight: Float, height: Float, calorieGoal: Int, waterGoal: Int, stepsGoal: Int, onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
             val updated = UserProfile(
                 id = "current_user",
@@ -599,6 +600,7 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
                 stepGoal = stepsGoal
             )
             repository.saveUserProfile(updated)
+            onComplete?.invoke()
         }
     }
 

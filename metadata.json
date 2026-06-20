@@ -1,0 +1,6 @@
+{
+  "name": "AI Calories & Meal Tracker",
+  "description": "An AI-powered calories tracker, meal planner with personalized nutrition recommendations, wearable fitness sync, Firestore database, and Google Sign-in.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

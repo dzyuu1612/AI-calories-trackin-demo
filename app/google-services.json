@@ -1,0 +1,34 @@
+{
+  "project_info": {
+    "project_number": "123456789012",
+    "project_id": "placeholder-calories-tracker",
+    "storage_bucket": "placeholder-calories-tracker.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789012:android:abcdef123456",
+        "android_client_info": {
+          "package_name": "com.aistudio.nutritiontracker.pvwqzy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "123456789012-placeholder.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-placeholder-key"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "status": 1
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -123,6 +123,16 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
     private val _customSystemInstruction = MutableStateFlow<String>("")
     val customSystemInstruction: StateFlow<String> = _customSystemInstruction.asStateFlow()
 
+    // High-level safe AI settings (prevents prompt injection & hides raw prompts from UI)
+    private val _cuisineFocusMode = MutableStateFlow("Vietnamese Focus")
+    val cuisineFocusMode: StateFlow<String> = _cuisineFocusMode.asStateFlow()
+
+    private val _verbosityLevel = MutableStateFlow("Detailed Analysis")
+    val verbosityLevel: StateFlow<String> = _verbosityLevel.asStateFlow()
+
+    private val _caloricAggressiveness = MutableStateFlow("Balanced Standard")
+    val caloricAggressiveness: StateFlow<String> = _caloricAggressiveness.asStateFlow()
+
     // Debug Mode visual payload state
     private val _lastRawResponse = MutableStateFlow<String>("")
     val lastRawResponse: StateFlow<String> = _lastRawResponse.asStateFlow()
@@ -229,10 +239,61 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
             }
         """.trimIndent()
 
-        val sysInstructionDefault = "You are an automated premium food recognition engine tailored for global gastronomy and precise calorie estimation."
+        val sysInstructionDefault = "You are an automated premium food recognition engine tailored for global gastronomy and precise calorie estimation. You must explicitly prioritize Vietnamese nutritional data and portion sizing accuracy when the user scans local or regional cuisine (including iconic specialties like Pho, Banh Mi, Bun Cha, and regional variations)."
+
+        _cuisineFocusMode.value = sharedPrefs.getString("ai_cuisine_focus", "Vietnamese Focus") ?: "Vietnamese Focus"
+        _verbosityLevel.value = sharedPrefs.getString("ai_verbosity_level", "Detailed Analysis") ?: "Detailed Analysis"
+        _caloricAggressiveness.value = sharedPrefs.getString("ai_caloric_aggressiveness", "Balanced Standard") ?: "Balanced Standard"
 
         _customUserPrompt.value = sharedPrefs.getString("scanned_food_custom_prompt", userPromptDefault) ?: userPromptDefault
         _customSystemInstruction.value = sharedPrefs.getString("scanned_food_custom_system_instruction", sysInstructionDefault) ?: sysInstructionDefault
+    }
+
+    fun updateScannerSettings(cuisine: String, verbosity: String, aggressiveness: String) {
+        _cuisineFocusMode.value = cuisine
+        _verbosityLevel.value = verbosity
+        _caloricAggressiveness.value = aggressiveness
+
+        sharedPrefs.edit()
+            .putString("ai_cuisine_focus", cuisine)
+            .putString("ai_verbosity_level", verbosity)
+            .putString("ai_caloric_aggressiveness", aggressiveness)
+            .apply()
+
+        // Automatically synthesize the exact system prompt safely in the background
+        val sysInstruction = when (cuisine) {
+            "Vietnamese Focus" -> {
+                "You are an automated premium food recognition engine tailored for global gastronomy and precise calorie estimation. You must explicitly prioritize Vietnamese nutritional data and portion sizing accuracy when the user scans local or regional cuisine (including iconic specialties like Pho, Banh Mi, Bun Cha, and regional variations)."
+            }
+            else -> {
+                "You are an automated premium food recognition engine tailored for global gastronomy and precise calorie estimation."
+            }
+        } + " " + when (verbosity) {
+            "Concise Summary" -> "Keep your dietary analysis feedback extremely brief, compact and to the point (maximum 2 sentences)."
+            else -> "Provide a comprehensive, detail-rich explanation of the health and fitness benefits, key biological highlights, and helpful dietary tips."
+        } + " " + when (aggressiveness) {
+            "Strict Deficit Focus" -> "Be highly conservative in your calorie estimations, aligning slightly on the higher side of normal ranges to help users maintain strict adherence to their calorie deficit boundaries."
+            "Athletic Bulk Focus" -> "Take active athletic muscular maintenance energy requirements into consideration, aligning calculations with rich protein and carbohydrate density guidelines."
+            else -> "Provide standard, highly balanced median dietary calculations."
+        }
+
+        val userPrompt = """
+            Analyze this food image. Identify the dish or food items present. High emphasis on identifying ingredients, proportions, and style correctly.
+            Provide estimated macros based on standard serving sizes.
+            
+            You MUST return ONLY a single valid JSON object. Do not explain, do not add markdown wrapping like ```json, just return pure JSON.
+            Required JSON keys and format:
+            {
+              "dishName": "Name of the food item (e.g. Grilled Salmon with Quinoa, Avocado Toast, Beef Pho)",
+              "calories": 450,
+              "protein": 24.5,
+              "carbs": 52.0,
+              "fat": 11.5,
+              "analysis": "A concise explanation of the health and fitness benefits of this dish, noting core ingredients and nutritional profile."
+            }
+        """.trimIndent()
+
+        updateCustomPrompts(userPrompt, sysInstruction)
     }
 
     fun updateCustomPrompts(userPrompt: String, systemInstruction: String) {
@@ -248,124 +309,56 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
         sharedPrefs.edit()
             .remove("scanned_food_custom_prompt")
             .remove("scanned_food_custom_system_instruction")
+            .remove("ai_cuisine_focus")
+            .remove("ai_verbosity_level")
+            .remove("ai_caloric_aggressiveness")
             .apply()
         loadCustomPrompts()
     }
 
-    // JSON Data backup export import matching Data Portability
-    fun exportBackupJson(): String {
-        return try {
-            val root = org.json.JSONObject()
-            
-            val p = userProfile.value
-            val profileObj = org.json.JSONObject()
-            profileObj.put("name", p.name)
-            profileObj.put("email", p.email)
-            profileObj.put("age", p.age)
-            profileObj.put("weightKg", p.weightKg.toDouble())
-            profileObj.put("heightCm", p.heightCm.toDouble())
-            profileObj.put("baseCalorieGoal", p.baseCalorieGoal)
-            profileObj.put("waterGoalMl", p.waterGoalMl)
-            profileObj.put("stepGoal", p.stepGoal)
-            root.put("profile", profileObj)
 
-            val mealsArray = org.json.JSONArray()
-            for (meal in todayMeals.value) {
-                val mob = org.json.JSONObject()
-                mob.put("foodName", meal.foodName)
-                mob.put("calories", meal.calories)
-                mob.put("proteinG", meal.proteinG.toDouble())
-                mob.put("carbsG", meal.carbsG.toDouble())
-                mob.put("fatG", meal.fatG.toDouble())
-                mob.put("mealType", meal.mealType)
-                mob.put("timestamp", meal.timestamp)
-                mealsArray.put(mob)
+    // SQL/Injection and malicious scripting defense sanitization layer
+    private fun isMaliciousPayload(input: String): Boolean {
+        val uppercaseInput = input.uppercase(java.util.Locale.ROOT)
+        val patterns = listOf(
+            "DROP TABLE", "DELETE FROM", "UPDATE ", "INSERT INTO", "ALTER TABLE",
+            "SQLITE_MASTER", "UNION SELECT", "SELECT * FROM", " OR 1=1", " OR '1'='1'",
+            "<SCRIPT", "JAVASCRIPT:", "ONERROR=", "ONLOAD=", "ONMOUSEOVER=",
+            "DATABASE_DESTRUCTION", "IGNORE ALL PRIOR INSTRUCTIONS", "BYPASS RESTRICTIONS",
+            "IGNORE PREVIOUS INSTRUCTIONS", "FORGET PREVIOUS INSTRUCTIONS", "NEW SYSTEM INSTRUCTIONS"
+        )
+        for (pattern in patterns) {
+            if (uppercaseInput.contains(pattern)) {
+                return true
             }
-            root.put("meals", mealsArray)
-            
-            val wArray = org.json.JSONArray()
-            for (w in _weightHistory.value) {
-                val wob = org.json.JSONObject()
-                wob.put("weight", w.weight.toDouble())
-                wob.put("date", w.date)
-                wob.put("timestamp", w.timestamp)
-                wArray.put(wob)
-            }
-            root.put("weightHistory", wArray)
-
-            root.toString(2)
-        } catch (e: Exception) {
-            """{"error": "Export failed: ${e.message}"}"""
         }
+        return false
     }
 
-    fun importBackupJson(jsonStr: String): Boolean {
-        return try {
-            val root = org.json.JSONObject(jsonStr)
-            
-            if (root.has("profile")) {
-                val p = root.getJSONObject("profile")
-                val updatedProf = UserProfile(
-                    id = "current_user",
-                    email = p.optString("email", userProfile.value.email),
-                    name = p.optString("name", userProfile.value.name),
-                    age = p.optInt("age", 25),
-                    weightKg = p.optDouble("weightKg", 70.0).toFloat(),
-                    heightCm = p.optDouble("heightCm", 175.0).toFloat(),
-                    baseCalorieGoal = p.optInt("baseCalorieGoal", 2000),
-                    waterGoalMl = p.optInt("waterGoalMl", 2500),
-                    stepGoal = p.optInt("stepGoal", 10000)
-                )
-                viewModelScope.launch {
-                    repository.saveUserProfile(updatedProf)
-                }
+    fun sanitizeUserQuery(query: String): String {
+        if (query.isEmpty()) return ""
+        // Prevent massive buffer/token overflow attacks
+        var sanitized = if (query.length > 250) query.substring(0, 250) else query
+        
+        // Remove known prompt injection commands or bypasses
+        val uppercaseSanitized = sanitized.uppercase(java.util.Locale.ROOT)
+        val dangerousPhrases = listOf(
+            "IGNORE PREVIOUS INSTRUCTIONS", "IGNORE ALL PRIOR INSTRUCTIONS", "FORGET PREVIOUS INSTRUCTIONS",
+            "FORGET ALL PREVIOUS", "BYPASS RESTRICTIONS", "YOU ARE NOW A", "SYSTEM OVERRIDE", "NEW SYSTEM RULES",
+            "DEVELOPER CONFIG", "PRINT YOUR INSTRUCTIONS", "SHOW SYSTEM PROMPT"
+        )
+        
+        for (phrase in dangerousPhrases) {
+            if (uppercaseSanitized.contains(phrase)) {
+                sanitized = sanitized.replace(Regex("(?i)" + Regex.escape(phrase)), "[Clean query protocol restored]")
             }
-
-            if (root.has("weightHistory")) {
-                val wArray = root.getJSONArray("weightHistory")
-                val restoredWeights = mutableListOf<WeightEntry>()
-                for (i in 0 until wArray.length()) {
-                    val wob = wArray.getJSONObject(i)
-                    restoredWeights.add(
-                        WeightEntry(
-                            weight = wob.getDouble("weight").toFloat(),
-                            date = wob.getString("date"),
-                            timestamp = wob.optLong("timestamp", System.currentTimeMillis())
-                        )
-                    )
-                }
-                _weightHistory.value = restoredWeights
-                saveWeightHistoryList(restoredWeights)
-            }
-
-            if (root.has("meals")) {
-                val mealsArray = root.getJSONArray("meals")
-                viewModelScope.launch {
-                    for (i in 0 until mealsArray.length()) {
-                        val mob = mealsArray.getJSONObject(i)
-                        val name = mob.getString("foodName")
-                        val cal = mob.getInt("calories")
-                        val pG = mob.getDouble("proteinG").toFloat()
-                        val cG = mob.getDouble("carbsG").toFloat()
-                        val fG = mob.getDouble("fatG").toFloat()
-                        val type = mob.getString("mealType")
-                        val meal = MealLog(
-                            foodName = name,
-                            calories = cal,
-                            proteinG = pG,
-                            carbsG = cG,
-                            fatG = fG,
-                            mealType = type,
-                            timestamp = mob.optLong("timestamp", System.currentTimeMillis())
-                        )
-                        repository.logMeal(meal)
-                    }
-                }
-            }
-            true
-        } catch (e: Exception) {
-            false
         }
+        
+        // Remove potential script injection constructs
+        sanitized = sanitized.replace(Regex("(?i)<script.*?>.*?</script>"), "")
+        sanitized = sanitized.replace(Regex("(?i)javascript:"), "")
+        
+        return sanitized
     }
 
     fun clearScannedFood() {
@@ -614,12 +607,13 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
             val profile = userProfile.value
             val todayTotal = summaryCaloriesLogged.value
             val goal = profile.baseCalorieGoal
+            val sanitizedRequest = sanitizeUserQuery(mealPlanningRequest)
 
             val prompt = """
                 Generate a healthy curated meal plan suggestion.
                 User profile: ${profile.age} years old, weighing ${profile.weightKg} kg, current daily target is $goal kcal.
                 Dietary Preference/Constraints: $dietaryPreference
-                Specific requests or search focus: $mealPlanningRequest
+                Specific requests or search focus: $sanitizedRequest
                 Current progress today: Already logged $todayTotal kcal.
                 
                 Search current local standard menus or healthy recipes of June 2026.
@@ -652,9 +646,10 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
             val profile = userProfile.value
             val todayCalories = todayMeals.value.joinToString { "${it.foodName} (${it.calories} kcal)" }
             val todayActive = todayActivities.value.joinToString { "${it.source}: ${it.steps} steps, ${it.activeCaloriesBurned} kcal burned" }
+            val sanitizedQuestion = sanitizeUserQuery(question)
 
             val prompt = """
-                The user asks: "$question"
+                The user asks: "$sanitizedQuestion"
                 User context:
                 - Age: ${profile.age}
                 - Weight: ${profile.weightKg} kg, Height: ${profile.heightCm} cm

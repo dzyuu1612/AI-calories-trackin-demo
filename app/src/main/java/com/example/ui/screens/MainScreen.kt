@@ -2715,205 +2715,7 @@ fun SettingsTab(viewModel: NutritionViewModel) {
             }
         }
 
-        item {
-            val customUserPrompt by viewModel.customUserPrompt.collectAsStateWithLifecycle()
-            val customSysInstruction by viewModel.customSystemInstruction.collectAsStateWithLifecycle()
 
-            var localPromptEdit by remember(customUserPrompt) { mutableStateOf(customUserPrompt) }
-            var localSysEdit by remember(customSysInstruction) { mutableStateOf(customSysInstruction) }
-            var showPromptSuccessMsg by remember { mutableStateOf(false) }
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp)),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "AI SCANNER SYSTEMS CUSTOM PROMPT",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Directly modify Gemini instruction prompts to customize nutrient extraction logic of scanned meals.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = localSysEdit,
-                        onValueChange = { localSysEdit = it },
-                        label = { Text("System Instruction Prompts") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = localPromptEdit,
-                        onValueChange = { localPromptEdit = it },
-                        label = { Text("User Context Formatting Instruction") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 11.sp),
-                        maxLines = 10
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (showPromptSuccessMsg) {
-                        Text(
-                            "AI Custom Prompts applied successfully!",
-                            color = Color(0xFF2E7D32),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.updateCustomPrompts(localPromptEdit, localSysEdit)
-                                showPromptSuccessMsg = true
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Apply Prompt", fontSize = 11.sp)
-                        }
-                        
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.resetCustomPromptsToDefault()
-                                showPromptSuccessMsg = true
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Reset Default", fontSize = 11.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            val clipboardManager = LocalClipboardManager.current
-            val context = LocalContext.current
-            var jsonInputText by remember { mutableStateOf("") }
-            var validationResultMsg by remember { mutableStateOf<String?>(null) }
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp)),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "OFFLINE DATA PORTABILITY ENGINE",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Export or Import your local and cloud sync profiles, weight timeline charts, and daily meals log as a simple, human-readable JSON block.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                val exported = viewModel.exportBackupJson()
-                                clipboardManager.setText(AnnotatedString(exported))
-                                Toast.makeText(context, "Full JSON Backup copied to clipboard!", Toast.LENGTH_LONG).show()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Icon(imageVector = Icons.Default.Share, contentDescription = "Export icon", modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Export JSON", fontSize = 11.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "IMPORT PREVIOUS BACKUP PORT:",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    OutlinedTextField(
-                        value = jsonInputText,
-                        onValueChange = {
-                            jsonInputText = it
-                            validationResultMsg = null
-                        },
-                        label = { Text("Paste JSON Backup string here") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 10.sp, fontFamily = FontFamily.Monospace),
-                        maxLines = 8,
-                        placeholder = { Text("{\n  \"profile\": {...},\n  \"meals\": [...]\n}") }
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    validationResultMsg?.let { msg ->
-                        Text(
-                            text = msg,
-                            color = if (msg.contains("Successfully")) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
-                    Button(
-                        onClick = {
-                            val isOk = viewModel.importBackupJson(jsonInputText)
-                            if (isOk) {
-                                validationResultMsg = "Successfully validated and imported data! Your profile goals, weight journal timeline and nutrients logs have been updated."
-                                jsonInputText = ""
-                                Toast.makeText(context, "Backup Restored Successfully!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                validationResultMsg = "Failed to parse JSON backup. Make sure the schema holds valid profile/meals objects."
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text("Validate & Hydrate Database", fontSize = 11.sp)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -3620,6 +3422,190 @@ fun ScannerTab(viewModel: NutritionViewModel) {
         }
         item {
             FoodCameraScannerCard(viewModel = viewModel, autoLaunchActive = true)
+        }
+        item {
+            val cuisine by viewModel.cuisineFocusMode.collectAsStateWithLifecycle()
+            val verbosity by viewModel.verbosityLevel.collectAsStateWithLifecycle()
+            val calorieAgr by viewModel.caloricAggressiveness.collectAsStateWithLifecycle()
+            
+            var showPromptSuccessMsg by remember { mutableStateOf(false) }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(28.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "AI SCANNER SYSTEMS ADVANCED TUNER",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFF2E7D32).copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                "SECURE PROTOCOL ACTIVE",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Customize the built-in AI meal detection engine parameters safely. Direct code instruction blocks have been isolated to protect against prompt injection and database exploits.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 1. Cuisine Focus Mode Selection
+                    Column {
+                        Text(
+                            text = "CUISINE OPTIMIZATION TARGET",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("Vietnamese Focus", "Global Focus").forEach { option ->
+                                val isSel = option == cuisine
+                                Surface(
+                                    onClick = {
+                                        viewModel.updateScannerSettings(option, verbosity, calorieAgr)
+                                        showPromptSuccessMsg = true
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    border = if (isSel) BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, Color.Transparent),
+                                    modifier = Modifier.weight(1f).height(34.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(option, fontSize = 11.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = if (isSel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 2. Verbosity Level Selection
+                    Column {
+                        Text(
+                            text = "ANALYSIS FEEDBACK DETAIL LEVEL",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("Detailed Analysis", "Concise Summary").forEach { option ->
+                                val isSel = option == verbosity
+                                Surface(
+                                    onClick = {
+                                        viewModel.updateScannerSettings(cuisine, option, calorieAgr)
+                                        showPromptSuccessMsg = true
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    border = if (isSel) BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, Color.Transparent),
+                                    modifier = Modifier.weight(1f).height(34.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(option, fontSize = 11.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = if (isSel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // 3. Caloric Aggressiveness Focus Selection
+                    Column {
+                        Text(
+                            text = "CALORIC INTAKE MATHEMATICAL MODEL",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("Balanced Standard", "Strict Deficit Focus", "Athletic Bulk Focus").forEach { option ->
+                                val isSel = option == calorieAgr
+                                Surface(
+                                    onClick = {
+                                        viewModel.updateScannerSettings(cuisine, verbosity, option)
+                                        showPromptSuccessMsg = true
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    border = if (isSel) BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, Color.Transparent),
+                                    modifier = Modifier.weight(1f).height(34.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(option, fontSize = 9.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = if (isSel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (showPromptSuccessMsg) {
+                        Text(
+                            "AI analysis settings saved and synchronized securely!",
+                            color = Color(0xFF2E7D32),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.resetCustomPromptsToDefault()
+                                showPromptSuccessMsg = true
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                        ) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reset Icon", modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Reset Safe Defaults", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
         }
     }
 }

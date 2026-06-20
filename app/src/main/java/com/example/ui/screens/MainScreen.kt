@@ -36,6 +36,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.ActivityLog
 import com.example.data.model.MealLog
 import com.example.data.model.UserProfile
+import com.example.data.repository.DietMeal
+import com.example.data.repository.DietPlan
+import com.example.data.repository.DietPlanProvider
 import com.example.ui.viewmodel.NutritionViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -869,6 +872,7 @@ fun AiPlannerTab(viewModel: NutritionViewModel) {
 
     var selectedPlanCategory by remember { mutableStateOf("All") }
     var foodSearchQuery by remember { mutableStateOf("") }
+    var selectedDietPlanGoal by remember { mutableStateOf("Weight Loss") }
     
     // Custom Grounded Prompt State
     var dietaryPreference by remember { mutableStateOf("Balanced") }
@@ -1431,7 +1435,7 @@ fun AiPlannerTab(viewModel: NutritionViewModel) {
         item {
             Column {
                 Text(
-                    text = "SELECT METABOLIC DIRECTIVE STRATEGY:",
+                    text = "SELECT STRUCTURED FITNESS PLAN GOAL:",
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1443,73 +1447,292 @@ fun AiPlannerTab(viewModel: NutritionViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Strategy 1: Low-Carb Gym Diet
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable {
+                    val goals = listOf(
+                        Triple("Weight Loss", "1,500 kcal", Color(0xFFEF4444)),
+                        Triple("Muscle Gain", "2,500 kcal", Color(0xFF10B981)),
+                        Triple("Balanced", "2,000 kcal", Color(0xFF3B82F6))
+                    )
+                    goals.forEach { (goalLabel, targetKcal, themeColor) ->
+                        val planGoal = when (goalLabel) {
+                            "Balanced" -> "Balanced Maintenance"
+                            else -> goalLabel
+                        }
+                        val isSelected = selectedDietPlanGoal == planGoal
+                        Card(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    selectedDietPlanGoal = planGoal
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) themeColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface
+                            ),
+                            border = BorderStroke(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) themeColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = goalLabel,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    color = if (isSelected) themeColor else MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = targetKcal,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp,
+                                    color = if (isSelected) themeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (isSelected) "VIEWING" else "SELECT",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 8.sp,
+                                    color = if (isSelected) themeColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- SECTION 1B: DETAILED STRUCTURED MEALS FOR SELECTED DIET ---
+        item {
+            val plan = DietPlanProvider.getPlanForGoal(selectedDietPlanGoal)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Plan Heading
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = plan.title.uppercase(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = plan.subtitle,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        
+                        Button(
+                            onClick = {
                                 viewModel.updateUserProfile(
                                     name = profile.name,
                                     age = profile.age,
                                     weight = profile.weightKg,
                                     height = profile.heightCm,
-                                    calorieGoal = 1500,
-                                    waterGoal = 2500,
-                                    stepsGoal = 10000
+                                    calorieGoal = plan.calorieTarget,
+                                    waterGoal = if (plan.goal == "Muscle Gain") 3200 else if (plan.goal == "Weight Loss") 2500 else 2800,
+                                    stepsGoal = if (plan.goal == "Muscle Gain") 12000 else 10000
                                 )
-                                Toast
-                                    .makeText(
-                                        context,
-                                        "Activated Low-Carb Calorie Deficit Plan (1,500 kcal limit active)!",
-                                        Toast.LENGTH_LONG
-                                    )
-                                    .show()
+                                Toast.makeText(
+                                    context,
+                                    "Successfully activated target profile guidelines! (Base limit set to ${plan.calorieTarget} kcal)",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.5.dp, Color(0xFFEF4444))
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Keto / Low-Carb", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFD32F2F))
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("1,500 kcal target. Focuses on healthy fats, lean protein, salads, and calorie deficits.", fontSize = 10.sp, lineHeight = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("ACTIVATE →", fontWeight = FontWeight.Black, fontSize = 9.sp, color = Color(0xFFD32F2F))
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("ACTIVATE PLAN", fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
-                    // Strategy 2: Muscle Builder Diet
-                    Card(
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = plan.description,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    
+                    // Macro meters in one row
+                    Text(
+                        text = "METABOLIC MACRO SEGMENTS",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                viewModel.updateUserProfile(
-                                    name = profile.name,
-                                    age = profile.age,
-                                    weight = profile.weightKg,
-                                    height = profile.heightCm,
-                                    calorieGoal = 2400,
-                                    waterGoal = 3200,
-                                    stepsGoal = 12000
-                                )
-                                Toast
-                                    .makeText(
-                                        context,
-                                        "Activated Lean Bulking Plan (2,400 kcal budget active)!",
-                                        Toast.LENGTH_LONG
-                                    )
-                                    .show()
-                            },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Lean Bulking", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("2,400 kcal target. Focuses on complex carbohydrates, rich protein, and positive nitrogen balance.", fontSize = 10.sp, lineHeight = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("ACTIVATE →", fontWeight = FontWeight.Black, fontSize = 9.sp, color = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("ENERGY", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                            Text("${plan.calorieTarget} kcal", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Column {
+                            Text("🥩 PROTEIN", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                            Text("${plan.proteinTarget.toInt()}g", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF10B981))
+                        }
+                        Column {
+                            Text("🍚 CARBS", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                            Text("${plan.carbsTarget.toInt()}g", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFF3B82F6))
+                        }
+                        Column {
+                            Text("🥑 FAT", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                            Text("${plan.fatTarget.toInt()}g", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFF59E0B))
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "DAILY MEAL SEQUENCE PLANS with LOCAL VIETNAMESE PORTIONS",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    plan.meals.forEach { m ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = m.mealType.uppercase(),
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = m.foodName,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    
+                                    Button(
+                                        onClick = {
+                                            viewModel.addMeal(
+                                                name = m.foodName,
+                                                calories = m.calories,
+                                                protein = m.protein,
+                                                carbs = m.carbs,
+                                                fat = m.fat,
+                                                mealType = m.mealType
+                                            )
+                                            Toast.makeText(
+                                                context,
+                                                "Successfully logged ${m.foodName} to today's diary!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        },
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.White)
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("LOG MEAL", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = m.portion,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text("⚡ ${m.calories} kcal", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("🥩 P: ${m.protein.toInt()}g", fontSize = 10.sp, color = Color(0xFF10B981))
+                                    Text("🍚 C: ${m.carbs.toInt()}g", fontSize = 10.sp, color = Color(0xFF3B82F6))
+                                    Text("🥑 F: ${m.fat.toInt()}g", fontSize = 10.sp, color = Color(0xFFF59E0B))
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), thickness = 0.5.dp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "💡 Advice: ${m.note}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "PLAN-LEVEL COMPLIANCE ADVICE:",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 0.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = plan.generalAdvice,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        lineHeight = 15.sp
+                    )
                 }
             }
         }

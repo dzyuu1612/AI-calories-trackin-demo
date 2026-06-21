@@ -41,7 +41,8 @@ data class ThinkingConfig(
 @JsonClass(generateAdapter = true)
 data class GenerationConfig(
     @Json(name = "thinkingConfig") val thinkingConfig: ThinkingConfig? = null,
-    @Json(name = "temperature") val temperature: Float? = null
+    @Json(name = "temperature") val temperature: Float? = null,
+    @Json(name = "responseMimeType") val responseMimeType: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -218,7 +219,10 @@ object GeminiClient {
                     )
                 )
             ),
-            generationConfig = GenerationConfig(temperature = 0.2f),
+            generationConfig = GenerationConfig(
+                temperature = 0.2f,
+                responseMimeType = "application/json"
+            ),
             systemInstruction = Content(parts = listOf(Part(text = sysInstructionText)))
         )
 

@@ -10,7 +10,7 @@ import com.example.data.model.UserProfile
 
 @Database(
     entities = [UserProfile::class, MealLog::class, ActivityLog::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

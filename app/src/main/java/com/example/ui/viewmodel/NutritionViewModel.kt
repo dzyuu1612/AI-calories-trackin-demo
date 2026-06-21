@@ -26,8 +26,13 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
 
     // Auth status exposing
     val currentUser = authRepo.currentUser
-    val isUserSignedIn = authRepo.currentUser.map { it != null }
+    val isUserSignedIn = combine(authRepo.currentUser, authRepo.mockSessionActive) { user, mockActive ->
+        user != null || mockActive
+    }
     val isRealFirebaseConfigured = authRepo.isRealFirebaseConfigured()
+
+    val userEmail: String get() = authRepo.userEmail
+    val userName: String get() = authRepo.userName
 
     private val _authError = MutableStateFlow<String?>(null)
     val authError: StateFlow<String?> = _authError.asStateFlow()
@@ -380,7 +385,7 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
                     customSystemInstruction = _customSystemInstruction.value
                 )
                 _lastRawResponse.value = responseText
-                val cleanJson = responseText.replace(Regex("```json|```"), "").trim()
+                val cleanJson = responseText.trim()
                 val startIndex = cleanJson.indexOf('{')
                 val endIndex = cleanJson.lastIndexOf('}')
                 if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
@@ -490,12 +495,87 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
         age = 28,
         weightKg = 73.5f,
         heightCm = 178f,
+        gender = "male",
+        activityLevel = "moderately_active",
+        fitnessGoal = "maintain",
         baseCalorieGoal = 2200,
         waterGoalMl = 2500,
         stepGoal = 10000
     )
 
     // --- Authentication Actions ---
+
+    fun signUpWithEmailAndPassword(
+        email: String, name: String, password: String,
+        age: Int, weight: Float, height: Float, gender: String, activityLevel: String, fitnessGoal: String,
+        onComplete: ((Boolean, String?) -> Unit)? = null
+    ) {
+        _authLoading.value = true
+        _authError.value = null
+        authRepo.signUpWithEmailAndPassword(email, name, password) { success, error ->
+            if (success) {
+                _authSuccess.value = true
+                viewModelScope.launch {
+                    val tdee = calculateTdee(gender, weight, height, age, activityLevel)
+                    val targets = deriveTargets(tdee, fitnessGoal, weight)
+                    val targetCals = targets["calories"] ?: tdee
+                    val waterGoal = if (gender.lowercase() == "male") 3000 else 2200
+                    val stepGoal = when (activityLevel.lowercase()) {
+                        "sedentary" -> 5000
+                        "lightly_active" -> 8000
+                        "moderately_active" -> 10000
+                        "very_active" -> 12000
+                        "extra_active" -> 15000
+                        else -> 10000
+                    }
+
+                    val initialProfile = UserProfile(
+                        id = "current_user",
+                        email = email,
+                        name = name,
+                        age = age,
+                        weightKg = weight,
+                        heightCm = height,
+                        gender = gender,
+                        activityLevel = activityLevel,
+                        fitnessGoal = fitnessGoal,
+                        baseCalorieGoal = targetCals,
+                        waterGoalMl = waterGoal,
+                        stepGoal = stepGoal
+                    )
+                    repository.saveUserProfile(initialProfile)
+
+                    val currentDate = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date())
+                    addWeightEntry(weight, currentDate)
+
+                    _authLoading.value = false
+                    onComplete?.invoke(true, null)
+                }
+            } else {
+                _authLoading.value = false
+                _authError.value = error
+                onComplete?.invoke(false, error)
+            }
+        }
+    }
+
+    fun signInWithEmailAndPassword(email: String, password: String, onComplete: ((Boolean, String?) -> Unit)? = null) {
+        _authLoading.value = true
+        _authError.value = null
+        authRepo.signInWithEmailAndPassword(email, password) { success, error ->
+            _authLoading.value = false
+            if (success) {
+                _authSuccess.value = true
+                viewModelScope.launch {
+                    repository.syncLocalDataWithFirestore()
+                    onComplete?.invoke(true, null)
+                }
+            } else {
+                _authError.value = error
+                onComplete?.invoke(false, error)
+            }
+        }
+    }
 
     fun signInAnonymously() {
         _authLoading.value = true
@@ -577,7 +657,81 @@ class NutritionViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    // --- Biometrics Engine (Mifflin-St Jeor) ---
+    private fun calculateTdee(gender: String, weightKg: Float, heightCm: Float, age: Int, activityLevel: String): Int {
+        val bmr = if (gender.lowercase() == "male") {
+            (10 * weightKg) + (6.25f * heightCm) - (5 * age) + 5
+        } else {
+            (10 * weightKg) + (6.25f * heightCm) - (5 * age) - 161
+        }
+
+        val multiplier = when (activityLevel.lowercase()) {
+            "sedentary" -> 1.2f
+            "lightly_active" -> 1.375f
+            "moderately_active" -> 1.55f
+            "very_active" -> 1.725f
+            "extra_active" -> 1.9f
+            else -> 1.2f
+        }
+        return (bmr * multiplier).toInt()
+    }
+
+    private fun deriveTargets(tdee: Int, goal: String, weightKg: Float): Map<String, Int> {
+        val targetCalories = when (goal) {
+            "lose_weight" -> tdee - 500
+            "gain_muscle" -> tdee + 300
+            else -> tdee
+        }
+        val proteinG = (weightKg * 2.0f).toInt()
+        val proteinKcal = proteinG * 4
+        val fatKcal = targetCalories * 0.25f
+        val fatG = (fatKcal / 9).toInt()
+        val remainingKcal = targetCalories - (proteinKcal + fatKcal)
+        val carbsG = maxOf(0, (remainingKcal / 4).toInt())
+
+        return mapOf(
+            "calories" to targetCalories,
+            "protein" to proteinG,
+            "carbs" to carbsG,
+            "fat" to fatG
+        )
+    }
+
     // --- Profile Editing ---
+    
+    fun updateBiometricProfile(
+        name: String, age: Int, weight: Float, height: Float, gender: String, activityLevel: String, fitnessGoal: String,
+        waterGoal: Int, stepsGoal: Int,
+        onComplete: (() -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            val tdee = calculateTdee(gender, weight, height, age, activityLevel)
+            val targets = deriveTargets(tdee, fitnessGoal, weight)
+            val targetCals = targets["calories"] ?: tdee
+            
+            val updated = UserProfile(
+                id = "current_user",
+                email = authRepo.userEmail,
+                name = name,
+                age = age,
+                weightKg = weight,
+                heightCm = height,
+                gender = gender,
+                activityLevel = activityLevel,
+                fitnessGoal = fitnessGoal,
+                baseCalorieGoal = targetCals,
+                waterGoalMl = waterGoal,
+                stepGoal = stepsGoal
+            )
+            repository.saveUserProfile(updated)
+            
+            val currentDate = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date())
+            addWeightEntry(weight, currentDate)
+            
+            onComplete?.invoke()
+        }
+    }
+
 
     fun updateUserProfile(name: String, age: Int, weight: Float, height: Float, calorieGoal: Int, waterGoal: Int, stepsGoal: Int, onComplete: (() -> Unit)? = null) {
         viewModelScope.launch {

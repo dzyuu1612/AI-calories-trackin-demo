@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,6 +61,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import kotlin.math.atan2
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,141 +73,150 @@ fun MainScreen(
     viewModel: NutritionViewModel,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Calorie Tracker", "Diet Planner", "AI Scanner", "AI Coach", "Settings")
+    val isSignedIn by viewModel.isUserSignedIn.collectAsStateWithLifecycle(initialValue = false)
 
-    Scaffold(
-        topBar = {
-            val profile by viewModel.userProfile.collectAsStateWithLifecycle()
-            Surface(
-                color = MaterialTheme.colorScheme.background,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+    if (!isSignedIn) {
+        AuthScreen(viewModel)
+    } else {
+        var selectedTab by remember { mutableIntStateOf(0) }
+        val tabs = listOf("Calorie Tracker", "Diet Planner", "AI Scanner", "AI Coach", "Settings")
+
+        Scaffold(
+            topBar = {
+                val profile by viewModel.userProfile.collectAsStateWithLifecycle()
+                Surface(
+                    color = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    val initial = if (profile.name.isNotBlank()) profile.name.take(1).uppercase() else "U"
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // Sleek Circular Avatar Badge
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = initial,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontSize = 16.sp
-                            )
-                        }
-                        // Sleek Header Welcome Text
-                        Column {
-                            Text(
-                                text = "Welcome back,",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = profile.name,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 17.sp,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                    }
-
-                    // Sleek settings icon button
-                    IconButton(
-                        onClick = { selectedTab = 4 },
                         modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(24.dp))
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
-                            contentAlignment = Alignment.Center
+                        val initial = if (profile.name.isNotBlank()) profile.name.take(1).uppercase() else "U"
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Setup Settings",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            // Sleek Circular Avatar Badge
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(22.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = initial,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontSize = 17.sp
+                                )
+                            }
+                            // Sleek Header Welcome Text
+                            Column {
+                                Text(
+                                    text = "Welcome back,",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = profile.name,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 17.sp,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                        }
+
+                        // Sleek settings icon button
+                        IconButton(
+                            onClick = { selectedTab = 4 },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Setup Settings",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
-            }
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = Color(0xFF1E1E1E), // Matte Carbon Black taskbar
-                tonalElevation = 8.dp,
-                modifier = Modifier.height(72.dp)
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    val icon = when (index) {
-                        0 -> Icons.Default.Home
-                        1 -> Icons.Default.Menu
-                        2 -> Icons.Default.Star  // AI Scanner (High tech Star AI / Spark symbol)
-                        3 -> Icons.Default.Person // AI Coach (Virtual Coach Avatar)
-                        else -> Icons.Default.Settings
-                    }
-                    val isSelected = selectedTab == index
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = { selectedTab = index },
-                        icon = {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = title,
-                                modifier = Modifier.size(22.dp)
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = Color(0xFF1E1E1E), // Matte Carbon Black taskbar
+                    tonalElevation = 8.dp
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        val icon = when (index) {
+                            0 -> Icons.Default.Home
+                            1 -> Icons.Default.Menu
+                            2 -> Icons.Default.Star  // AI Scanner (High tech Star AI / Spark symbol)
+                            3 -> Icons.Default.Person // AI Coach (Virtual Coach Avatar)
+                            else -> Icons.Default.Settings
+                        }
+                        val isSelected = selectedTab == index
+                        NavigationBarItem(
+                            selected = isSelected,
+                            onClick = { selectedTab = index },
+                            icon = {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = title,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    text = title,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color.White,
+                                selectedTextColor = MaterialTheme.colorScheme.primary, // Athletic orange!
+                                indicatorColor = MaterialTheme.colorScheme.primary, // Orange active block!
+                                unselectedIconColor = Color.LightGray.copy(alpha = 0.6f),
+                                unselectedTextColor = Color.LightGray.copy(alpha = 0.5f)
                             )
-                        },
-                        label = {
-                            Text(
-                                text = title,
-                                fontSize = 10.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = MaterialTheme.colorScheme.primary, // Athletic orange!
-                            indicatorColor = MaterialTheme.colorScheme.primary, // Orange active block!
-                            unselectedIconColor = Color.LightGray.copy(alpha = 0.6f),
-                            unselectedTextColor = Color.LightGray.copy(alpha = 0.5f)
                         )
-                    )
+                    }
                 }
-            }
-        },
-        modifier = modifier
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            when (selectedTab) {
-                0 -> TrackerTab(viewModel, onNavigateToScanner = { selectedTab = 2 })
-                1 -> AiPlannerTab(viewModel)
-                2 -> ScannerTab(viewModel)
-                3 -> ProCoachTab(viewModel)
-                4 -> SettingsTab(viewModel)
+            },
+            modifier = modifier
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                when (selectedTab) {
+                    0 -> TrackerTab(
+                        viewModel,
+                        onNavigateToScanner = { selectedTab = 2 },
+                        onNavigateToCoach = { selectedTab = 3 }
+                    )
+                    1 -> AiPlannerTab(viewModel)
+                    2 -> ScannerTab(viewModel)
+                    3 -> ProCoachTab(viewModel)
+                    4 -> SettingsTab(viewModel)
+                }
             }
         }
     }
@@ -209,7 +225,11 @@ fun MainScreen(
 // --- TAB 1: CALORIE & WELLNESS TRACKER ---
 
 @Composable
-fun TrackerTab(viewModel: NutritionViewModel, onNavigateToScanner: () -> Unit) {
+fun TrackerTab(
+    viewModel: NutritionViewModel,
+    onNavigateToScanner: () -> Unit,
+    onNavigateToCoach: () -> Unit
+) {
     val profile by viewModel.userProfile.collectAsStateWithLifecycle()
     val meals by viewModel.todayMeals.collectAsStateWithLifecycle()
     val syncedSteps by viewModel.summarySteps.collectAsStateWithLifecycle()
@@ -298,6 +318,62 @@ fun TrackerTab(viewModel: NutritionViewModel, onNavigateToScanner: () -> Unit) {
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "Go",
                         tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
+        // --- PROACTIVE LINK BANNER TO STANDALONE TASKBAR COACH ---
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToCoach() },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Face,
+                            contentDescription = "AI Coach Access",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "METABOLIC AI COACH ACTIVE",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Seek personalized advice on food targets, weight, & water",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            lineHeight = 16.sp
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Go to Coach",
+                        tint = Color.LightGray,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -528,6 +604,23 @@ fun TrackerTab(viewModel: NutritionViewModel, onNavigateToScanner: () -> Unit) {
 
                         Spacer(modifier = Modifier.height(18.dp))
                         Text(
+                            text = "MACRONUTRIENT BREAKDOWN (DONUT CHART):",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.primary, // Orange
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        MacronutrientDonutChart(
+                            protein = protein,
+                            carbs = carbs,
+                            fat = fat,
+                            totalCalories = calLogged
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Text(
                             text = "HYDRATION & LIFESTYLE INTEGRATIONS:",
                             fontWeight = FontWeight.Black,
                             fontSize = 9.sp,
@@ -702,6 +795,242 @@ fun MacroProgressRow(name: String, value: Int, target: Int, unit: String, color:
             color = color,
             trackColor = MaterialTheme.colorScheme.outlineVariant
         )
+    }
+}
+
+@Composable
+fun MacronutrientDonutChart(
+    protein: Float,
+    carbs: Float,
+    fat: Float,
+    totalCalories: Int,
+    modifier: Modifier = Modifier
+) {
+    val cleanP = maxOf(0f, protein)
+    val cleanC = maxOf(0f, carbs)
+    val cleanF = maxOf(0f, fat)
+    val totalGrams = cleanP + cleanC + cleanF
+
+    var selectedIndex by remember { mutableStateOf(-1) }
+
+    val ratios = if (totalGrams > 0) {
+        listOf(cleanC / totalGrams, cleanP / totalGrams, cleanF / totalGrams)
+    } else {
+        listOf(0.4f, 0.3f, 0.3f)
+    }
+
+    val macroNames = listOf("Carbohydrates", "Protein", "Fats")
+    val macroValues = listOf(cleanC, cleanP, cleanF)
+    val sliceColors = listOf(
+        MaterialTheme.colorScheme.primary,
+        Color(0xFF64B5F6),
+        Color(0xFFEF4444)
+    )
+
+    val animationProgress = remember { Animatable(0f) }
+    LaunchedEffect(protein, carbs, fat) {
+        animationProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 800)
+        )
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Box(
+            modifier = Modifier
+                .size(140.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(totalGrams) {
+                        detectTapGestures { offset ->
+                            if (totalGrams == 0f) return@detectTapGestures
+                            val canvasWidth = size.width
+                            val canvasHeight = size.height
+                            val centerX = canvasWidth / 2f
+                            val centerY = canvasHeight / 2f
+                            val x = offset.x - centerX
+                            val y = offset.y - centerY
+                            val radius = canvasWidth / 2f
+
+                            val dist = Math.sqrt((x * x + y * y).toDouble())
+                            if (dist > radius * 0.4 && dist < radius) {
+                                var angle = Math.toDegrees(atan2(y.toDouble(), x.toDouble())).toFloat()
+                                if (angle < 0) angle += 360f
+                                
+                                val adjustedAngle = (angle + 90f) % 360f
+                                
+                                var currentAngle = 0f
+                                val gap = 4f
+                                val totalGaps = ratios.size * gap
+                                val availableSweep = 360f - totalGaps
+                                
+                                var clickedIndex = -1
+                                for (i in ratios.indices) {
+                                    val sweep = availableSweep * ratios[i]
+                                    val start = currentAngle
+                                    val end = start + sweep
+                                    if (adjustedAngle >= start && adjustedAngle <= end) {
+                                        clickedIndex = i
+                                        break
+                                    }
+                                    currentAngle += sweep + gap
+                                }
+                                selectedIndex = if (selectedIndex == clickedIndex) -1 else clickedIndex
+                            } else {
+                                selectedIndex = -1
+                            }
+                        }
+                    }
+            ) {
+                val strokeWidth = 16.dp.toPx()
+                val diameter = size.minDimension - strokeWidth
+                val topLeft = Offset(
+                    (size.width - diameter) / 2f,
+                    (size.height - diameter) / 2f
+                )
+                val arcSize = Size(diameter, diameter)
+
+                if (totalGrams == 0f) {
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.08f),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    )
+                } else {
+                    var currentStartAngle = -90f
+                    val gapAngle = 4f
+                    val totalGaps = ratios.size * gapAngle
+                    val availableSweep = 360f - totalGaps
+
+                    for (i in ratios.indices) {
+                        val sweep = availableSweep * ratios[i] * animationProgress.value
+                        val isHighlighted = selectedIndex == i || selectedIndex == -1
+                        val colorAlpha = if (isHighlighted) 1.0f else 0.3f
+                        
+                        drawArc(
+                            color = sliceColors[i].copy(alpha = colorAlpha),
+                            startAngle = currentStartAngle,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                        )
+                        currentStartAngle += sweep + gapAngle
+                    }
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                if (selectedIndex != -1) {
+                    Text(
+                        text = macroNames[selectedIndex].uppercase(),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = sliceColors[selectedIndex]
+                    )
+                    Text(
+                        text = "${macroValues[selectedIndex].toInt()}g",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                    val pCent = if (totalGrams > 0) (macroValues[selectedIndex] / totalGrams * 100).toInt() else 0
+                    Text(
+                        text = "$pCent%",
+                        fontSize = 10.sp,
+                        color = Color.LightGray
+                    )
+                } else {
+                    Text(
+                        text = "TOTAL DAILY",
+                        fontSize = 7.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.LightGray.copy(alpha = 0.6f),
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        text = "${totalCalories} kcal",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                    Text(
+                        text = if (totalGrams > 0f) "${totalGrams.toInt()}g logged" else "0g logged",
+                        fontSize = 8.sp,
+                        color = Color.LightGray.copy(alpha = 0.4f)
+                    )
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .padding(start = 12.dp)
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            for (i in macroNames.indices) {
+                val weight = if (selectedIndex == i) FontWeight.Bold else FontWeight.Normal
+                val opacity = if (selectedIndex == i || selectedIndex == -1) 1.0f else 0.4f
+                val percent = if (totalGrams > 0) (macroValues[i] / totalGrams * 100).toInt() else 0
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedIndex = if (selectedIndex == i) -1 else i
+                        }
+                        .padding(vertical = 1.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(sliceColors[i].copy(alpha = opacity))
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Column {
+                        Text(
+                            text = macroNames[i],
+                            fontSize = 11.sp,
+                            fontWeight = weight,
+                            color = Color.White.copy(alpha = opacity)
+                        )
+                        Text(
+                            text = if (totalGrams > 0) "${macroValues[i].toInt()}g ($percent%)" else "0g (0%)",
+                            fontSize = 10.sp,
+                            color = Color.LightGray.copy(alpha = opacity * 0.7f)
+                        )
+                    }
+                }
+            }
+            if (selectedIndex != -1) {
+                Text(
+                    text = "Tap center to reset view",
+                    fontSize = 8.sp,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    modifier = Modifier.clickable { selectedIndex = -1 }
+                )
+            }
+        }
     }
 }
 
@@ -2263,7 +2592,7 @@ fun ProCoachTab(viewModel: NutritionViewModel) {
     }
 }
 
-// --- TAB 4: PROFILE SETTINGS, WEARABLES SYNC FLOW & FIREBASE AUTH ---
+// --- TAB 4: PROFILE SETTINGS & USER DETAILS ---
 
 @Composable
 fun SettingsTab(viewModel: NutritionViewModel) {
@@ -2271,11 +2600,6 @@ fun SettingsTab(viewModel: NutritionViewModel) {
     val isSignedIn by viewModel.isUserSignedIn.collectAsStateWithLifecycle(initialValue = false)
     val loadingAuth by viewModel.authLoading.collectAsStateWithLifecycle()
     val authError by viewModel.authError.collectAsStateWithLifecycle()
-    val isRealFirebaseConfigured = viewModel.isRealFirebaseConfigured
-
-    var syncBrand by remember { mutableStateOf("Fitbit Tracker") }
-    val isSyncingWearable by viewModel.isWearableSyncing.collectAsStateWithLifecycle()
-    val wearableStatus by viewModel.wearableSyncStatus.collectAsStateWithLifecycle()
 
     // Form states for profile edit
     var nameEdit by remember { mutableStateOf(profile.name) }
@@ -2294,15 +2618,14 @@ fun SettingsTab(viewModel: NutritionViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Firebase Cloud Sign-In Authentication Control Card
+        // Logged In User Account Status Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(28.dp)),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isSignedIn) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
-                    else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f)
                 ),
                 shape = RoundedCornerShape(28.dp),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -2315,34 +2638,33 @@ fun SettingsTab(viewModel: NutritionViewModel) {
                     ) {
                         Column {
                             Text(
-                                text = "FIREBASE CLOUD PERSISTENCE",
+                                text = "ACTIVE USER IDENTITY",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = if (isSignedIn) "Secured Sign-in Sync Active" else "Offline fallbacks Local Storage Active",
+                                text = "Sync Session Fully Active",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )
                         }
                         Icon(
-                            imageVector = if (isSignedIn) Icons.Default.Check else Icons.Default.Warning,
-                            contentDescription = "Sync",
-                            tint = if (isSignedIn) Color(0xFF388E3C) else Color(0xFFF1C40F)
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Sync Approved",
+                            tint = Color(0xFF388E3C)
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                    if (!isRealFirebaseConfigured) {
-                        Text(
-                            text = "Note: No configuration properties found in google-services.json context. Running local sandbox mode. Sign in to test local Firebase auth triggers.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+                    Text(
+                        text = "Your profile information and daily calorie logs are backed up progress tracking. You may sign out below.",
+                        fontSize = 11.sp,
+                        color = Color.LightGray.copy(alpha = 0.8f)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     if (authError != null) {
                         Text(
@@ -2354,105 +2676,22 @@ fun SettingsTab(viewModel: NutritionViewModel) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    if (isSignedIn) {
-                        Text(text = "Logged in as: ${profile.email}", fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.signOut() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("Sign Out Secure Session")
-                        }
-                    } else {
-                        Button(
-                            onClick = { viewModel.signInAnonymously() },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !loadingAuth,
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            if (loadingAuth) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp))
-                            } else {
-                                Text("Sign In with Google Sandbox")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Wearable Integration Dashboard Sync
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp)),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "WEARABLE FITNESS SYNC PANEL",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text("Detect Wearable Sensor Device Brand:", fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        val brands = listOf("Fitbit Tracker", "Garmin Sync", "Apple Health", "Samsung Fitness")
-                        brands.forEach { brand ->
-                            FilterChip(
-                                selected = syncBrand == brand,
-                                onClick = { syncBrand = brand },
-                                label = { Text(brand.split(" ").first(), fontSize = 11.sp) },
-                                modifier = Modifier.weight(1.0f)
-                            )
+                        Column {
+                            Text(text = "Logged in as:", fontSize = 10.sp, color = Color.Gray)
+                            Text(text = viewModel.userEmail, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { viewModel.syncWithWearable(syncBrand) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                        enabled = !isSyncingWearable,
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        if (isSyncingWearable) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onTertiary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Querying Bluetooth Bluetooth LE link...")
-                        } else {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = "Sync icon")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sync steps now from $syncBrand")
+                        Button(
+                            onClick = { viewModel.signOut() },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Text("Sign Out", fontWeight = FontWeight.Bold)
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .padding(12.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                    ) {
-                        Text(
-                            text = wearableStatus,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
@@ -2577,7 +2816,7 @@ fun SettingsTab(viewModel: NutritionViewModel) {
                         ProfileRow(label = "Height Stature", value = "${profile.heightCm} cm")
                         ProfileRow(label = "Target Daily Calorie Budget", value = "${profile.baseCalorieGoal} kcal")
                         ProfileRow(label = "Water Target Budget", value = "${profile.waterGoalMl} ml")
-                        ProfileRow(label = "Wearable Active Step Goal", value = "${profile.stepGoal} steps")
+                        ProfileRow(label = "Target Walking Steps", value = "${profile.stepGoal} steps")
                     }
                 }
             }
@@ -3605,6 +3844,496 @@ fun ScannerTab(viewModel: NutritionViewModel) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AuthScreen(viewModel: NutritionViewModel) {
+    var isSignUpMode by remember { mutableStateOf(false) }
+    val loadingAuth by viewModel.authLoading.collectAsStateWithLifecycle()
+    val authError by viewModel.authError.collectAsStateWithLifecycle()
+
+    var email by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+
+    // --- Biometric States for TDEE Onboarding ---
+    var ageStr by remember { mutableStateOf("28") }
+    var weightStr by remember { mutableStateOf("70") }
+    var heightStr by remember { mutableStateOf("175") }
+    var gender by remember { mutableStateOf("male") }
+    var activityLevel by remember { mutableStateOf("moderately_active") }
+    var fitnessGoal by remember { mutableStateOf("maintain") }
+
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF121212)) // Dark Matte Black
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // High-Contrast Visual Hero Icon (matching the apple design theme)
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Calorie App Logo Banner",
+                    tint = Color.White,
+                    modifier = Modifier.size(52.dp)
+                )
+            }
+
+            Text(
+                text = if (isSignUpMode) "CREATE BIOMETRIC PROFILE" else "SECURED IDENTITY LOGIN",
+                fontWeight = FontWeight.Black,
+                fontSize = 20.sp,
+                color = Color.White,
+                letterSpacing = 1.sp
+            )
+
+            Text(
+                text = if (isSignUpMode) "Fill in biometric identity and goals to calculate your custom physiological TDEE matches." else "Please log in to synchronize calories, wellness, & water targets",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Error display
+            val activeError = localError ?: authError
+            if (activeError != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = activeError,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            // --- CREDENTIALS SECTION ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "1. ACCOUNT CREDENTIALS",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 1.sp
+                    )
+
+                    if (isSignUpMode) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Display Name / Alias") },
+                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Name") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email Address") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        leadingIcon = { Icon(imageVector = Icons.Default.Lock, contentDescription = "Lock") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                        )
+                    )
+
+                    if (isSignUpMode) {
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            label = { Text("Confirm Password") },
+                            leadingIcon = { Icon(imageVector = Icons.Default.Lock, contentDescription = "Confirm Lock") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                }
+            }
+
+            if (isSignUpMode) {
+                // --- BIOMETRICS SECTION ---
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "2. BIOMETRIC MEASUREMENTS (FOR TDEE)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp
+                        )
+
+                        Text("Biological Sex Profile:", fontSize = 12.sp, color = Color.Gray)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            listOf("male" to "Male ♂", "female" to "Female ♀").forEach { (key, label) ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (gender == key) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.05f))
+                                        .clickable { gender = key }
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (gender == key) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (gender == key) Color.White else Color.LightGray,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        OutlinedTextField(
+                            value = ageStr,
+                            onValueChange = { ageStr = it },
+                            label = { Text("Age (years)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = weightStr,
+                            onValueChange = { weightStr = it },
+                            label = { Text("Weight (kg)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = heightStr,
+                            onValueChange = { heightStr = it },
+                            label = { Text("Height (cm)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+                }
+
+                // --- GOAL PLAN & EXERCISE MULTIPLIER ---
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "3. LIFESTYLE ADAPTABILITY & FITNESS TARGET",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp
+                        )
+
+                        Text("Select Target Objective:", fontSize = 12.sp, color = Color.Gray)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val goals = listOf(
+                                "lose_weight" to "Lose Weight 📉",
+                                "maintain" to "Maintain ⚖️",
+                                "gain_muscle" to "Gain Muscle 📈"
+                            )
+                            goals.forEach { (key, label) ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (fitnessGoal == key) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.05f))
+                                        .clickable { fitnessGoal = key }
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (fitnessGoal == key) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (fitnessGoal == key) Color.White else Color.LightGray,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        Text("Activity Schedule Multiplier:", fontSize = 12.sp, color = Color.Gray)
+
+                        val activityLevels = listOf(
+                            "sedentary" to "Sedentary (desk job, no exercise)",
+                            "lightly_active" to "Light (1-3 days light exercise/wk)",
+                            "moderately_active" to "Moderate (3-5 days exercise/wk)",
+                            "very_active" to "Heavy (6-7 days hard workout/wk)",
+                            "extra_active" to "Athlete (Elite/Extreme sports)"
+                        )
+                        activityLevels.forEach { (key, desc) ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (activityLevel == key) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.02f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (activityLevel == key) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f),
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable { activityLevel = key }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clip(CircleShape)
+                                            .background(if (activityLevel == key) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                            .border(1.5.dp, if (activityLevel == key) MaterialTheme.colorScheme.primary else Color.Gray, CircleShape)
+                                    )
+                                    Text(
+                                        text = desc,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (activityLevel == key) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (activityLevel == key) Color.White else Color.LightGray
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    localError = null
+                    if (email.isBlank() || password.isBlank() || (isSignUpMode && name.isBlank())) {
+                        localError = "Please fill in all account identity fields."
+                        return@Button
+                    }
+                    if (isSignUpMode && password != confirmPassword) {
+                        localError = "Passwords do not match."
+                        return@Button
+                    }
+
+                    val ageVal = ageStr.toIntOrNull()
+                    val weightVal = weightStr.toFloatOrNull()
+                    val heightVal = heightStr.toFloatOrNull()
+
+                    if (isSignUpMode) {
+                        if (ageVal == null || ageVal <= 0 || ageVal > 120) {
+                            localError = "Please enter a valid age (1-120)."
+                            return@Button
+                        }
+                        if (weightVal == null || weightVal <= 0f) {
+                            localError = "Please enter a valid weight in kg (e.g. 70)."
+                            return@Button
+                        }
+                        if (heightVal == null || heightVal <= 0f) {
+                            localError = "Please enter a valid height in cm (e.g. 175)."
+                            return@Button
+                        }
+                    }
+
+                    if (isSignUpMode) {
+                        viewModel.signUpWithEmailAndPassword(
+                            email = email.trim(),
+                            name = name.trim(),
+                            password = password,
+                            age = ageVal ?: 28,
+                            weight = weightVal ?: 70f,
+                            height = heightVal ?: 175f,
+                            gender = gender,
+                            activityLevel = activityLevel,
+                            fitnessGoal = fitnessGoal
+                        )
+                    } else {
+                        viewModel.signInWithEmailAndPassword(email.trim(), password)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                enabled = !loadingAuth
+            ) {
+                if (loadingAuth) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text(
+                        text = if (isSignUpMode) "CALCULATE TDEE & JOIN" else "SIGN IN NOW",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            // High priority Guest Mode option
+            Button(
+                onClick = {
+                    viewModel.signInAnonymously()
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                enabled = !loadingAuth
+            ) {
+                Text(
+                    text = "CONTINUE AS GUEST (OFFLINE MODE)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = if (isSignUpMode) "Already have an account? " else "Don't have an identity account? ",
+                    fontSize = 12.sp,
+                    color = Color.LightGray
+                )
+                Text(
+                    text = if (isSignUpMode) "Log In" else "Create one now",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable {
+                        localError = null
+                        isSignUpMode = !isSignUpMode
+                    }
+                )
             }
         }
     }

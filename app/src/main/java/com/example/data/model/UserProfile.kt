@@ -11,6 +11,9 @@ data class UserProfile(
     val age: Int,
     val weightKg: Float,
     val heightCm: Float,
+    val gender: String = "male",
+    val activityLevel: String = "moderately_active",
+    val fitnessGoal: String = "maintain",
     val baseCalorieGoal: Int,
     val waterGoalMl: Int,
     val stepGoal: Int

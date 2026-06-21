@@ -2723,15 +2723,33 @@ fun SettingsTab(viewModel: NutritionViewModel) {
                         TextButton(
                             onClick = {
                                 if (isEditState) {
-                                    // Save changes
+                                    // Save changes with robust sanitizing parsers
+                                    val cleanAgeStr = ageEdit.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                                    val ageVal = cleanAgeStr.toFloatOrNull()?.toInt() ?: cleanAgeStr.toIntOrNull() ?: profile.age
+
+                                    val cleanWeightStr = weightEdit.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                                    val weightVal = cleanWeightStr.toFloatOrNull() ?: profile.weightKg
+
+                                    val cleanHeightStr = heightEdit.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                                    val heightVal = cleanHeightStr.toFloatOrNull() ?: profile.heightCm
+
+                                    val cleanCalGoalStr = calGoalEdit.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                                    val calorieGoalVal = cleanCalGoalStr.toFloatOrNull()?.toInt() ?: cleanCalGoalStr.toIntOrNull() ?: profile.baseCalorieGoal
+
+                                    val cleanWaterGoalStr = waterGoalEdit.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                                    val waterGoalVal = cleanWaterGoalStr.toFloatOrNull()?.toInt() ?: cleanWaterGoalStr.toIntOrNull() ?: profile.waterGoalMl
+
+                                    val cleanStepGoalStr = stepGoalEdit.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                                    val stepsGoalVal = cleanStepGoalStr.toFloatOrNull()?.toInt() ?: cleanStepGoalStr.toIntOrNull() ?: profile.stepGoal
+
                                     viewModel.updateUserProfile(
                                         name = nameEdit,
-                                        age = ageEdit.toIntOrNull() ?: profile.age,
-                                        weight = weightEdit.toFloatOrNull() ?: profile.weightKg,
-                                        height = heightEdit.toFloatOrNull() ?: profile.heightCm,
-                                        calorieGoal = calGoalEdit.toIntOrNull() ?: profile.baseCalorieGoal,
-                                        waterGoal = waterGoalEdit.toIntOrNull() ?: profile.waterGoalMl,
-                                        stepsGoal = stepGoalEdit.toIntOrNull() ?: profile.stepGoal
+                                        age = ageVal,
+                                        weight = weightVal,
+                                        height = heightVal,
+                                        calorieGoal = calorieGoalVal,
+                                        waterGoal = waterGoalVal,
+                                        stepsGoal = stepsGoalVal
                                     )
                                 } else {
                                     // Set states to match
@@ -3499,7 +3517,7 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
                     )
                 }
                 Text(
-                    text = "BIOCHEMICAL BMI & TDEE CALCULATOR",
+                    text = "TDEE & BMI CALCULATOR",
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.primary,
@@ -3509,7 +3527,7 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
 
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Track your chemical Body Mass Index (BMI) and Total Daily Energy Expenditure (TDEE) directly mapped to your physiological profile details.",
+                text = "Calculate your ideal body metrics and Total Daily Energy Expenditure (TDEE) based on your physiological profile and activity levels.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 16.sp
@@ -3528,7 +3546,7 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Physio BMI", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Your BMI", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (bmi > 0f) String.format("%.1f", bmi) else "N/A",
@@ -3546,7 +3564,7 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text("Metabolic TDEE", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Your TDEE", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = String.format("%,d", computedTdee),
@@ -3554,7 +3572,7 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
                             fontWeight = FontWeight.Black,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Text("Target burn value", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Calories/day", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -3562,13 +3580,13 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Sex selections
-            Text("BIOLOGICAL GENDER REFERENCE:", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("GENDER:", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                listOf(Pair("Male (XY)", true), Pair("Female (XX)", false)).forEach { (label, isMale) ->
+                listOf(Pair("Male", true), Pair("Female", false)).forEach { (label, isMale) ->
                     val isSelected = genderIsMale == isMale
                     FilledTonalButton(
                         onClick = { genderIsMale = isMale },
@@ -3588,7 +3606,7 @@ fun TdeeBmiCalculatorCard(viewModel: NutritionViewModel) {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Scrollable activity options
-            Text("DAILY EXERCISE/WORKOUT INTENSITY:", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("DAILY EXERCISE LEVEL:", fontWeight = FontWeight.Bold, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -3901,15 +3919,15 @@ fun AuthScreen(viewModel: NutritionViewModel) {
             }
 
             Text(
-                text = if (isSignUpMode) "CREATE BIOMETRIC PROFILE" else "SECURED IDENTITY LOGIN",
-                fontWeight = FontWeight.Black,
-                fontSize = 20.sp,
+                text = if (isSignUpMode) "Create Account" else "Welcome Back",
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
                 color = Color.White,
-                letterSpacing = 1.sp
+                letterSpacing = (-0.5).sp
             )
 
             Text(
-                text = if (isSignUpMode) "Fill in biometric identity and goals to calculate your custom physiological TDEE matches." else "Please log in to synchronize calories, wellness, & water targets",
+                text = if (isSignUpMode) "Fill in your details to calculate TDEE and targets." else "Sign in to synchronize your calorie and health tracker logs.",
                 fontSize = 12.sp,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
@@ -3939,7 +3957,7 @@ fun AuthScreen(viewModel: NutritionViewModel) {
             // --- CREDENTIALS SECTION ---
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF18181B)),
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
             ) {
@@ -3948,7 +3966,7 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "1. ACCOUNT CREDENTIALS",
+                        text = "ACCOUNT CREDENTIALS",
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.primary,
@@ -4030,7 +4048,7 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                 // --- BIOMETRICS SECTION ---
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF18181B)),
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
                 ) {
@@ -4039,14 +4057,14 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "2. BIOMETRIC MEASUREMENTS (FOR TDEE)",
+                            text = "BIOMETRIC DETAILS",
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
                             letterSpacing = 1.sp
                         )
 
-                        Text("Biological Sex Profile:", fontSize = 12.sp, color = Color.Gray)
+                        Text("Gender:", fontSize = 12.sp, color = Color.Gray)
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -4129,7 +4147,7 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                 // --- GOAL PLAN & EXERCISE MULTIPLIER ---
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF18181B)),
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
                 ) {
@@ -4138,14 +4156,14 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "3. LIFESTYLE ADAPTABILITY & FITNESS TARGET",
+                            text = "GOAL & ACTIVITY",
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary,
                             letterSpacing = 1.sp
                         )
 
-                        Text("Select Target Objective:", fontSize = 12.sp, color = Color.Gray)
+                        Text("Your Goal:", fontSize = 12.sp, color = Color.Gray)
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -4182,7 +4200,7 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                             }
                         }
 
-                        Text("Activity Schedule Multiplier:", fontSize = 12.sp, color = Color.Gray)
+                        Text("Activity Level:", fontSize = 12.sp, color = Color.Gray)
 
                         val activityLevels = listOf(
                             "sedentary" to "Sedentary (desk job, no exercise)",
@@ -4243,9 +4261,14 @@ fun AuthScreen(viewModel: NutritionViewModel) {
                         return@Button
                     }
 
-                    val ageVal = ageStr.toIntOrNull()
-                    val weightVal = weightStr.toFloatOrNull()
-                    val heightVal = heightStr.toFloatOrNull()
+                    val cleanAgeStr = ageStr.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                    val ageVal = cleanAgeStr.toFloatOrNull()?.toInt() ?: cleanAgeStr.toIntOrNull()
+
+                    val cleanWeightStr = weightStr.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                    val weightVal = cleanWeightStr.toFloatOrNull()
+
+                    val cleanHeightStr = heightStr.trim().replace(",", ".").replace(Regex("[^\\d.]"), "")
+                    val heightVal = cleanHeightStr.toFloatOrNull()
 
                     if (isSignUpMode) {
                         if (ageVal == null || ageVal <= 0 || ageVal > 120) {

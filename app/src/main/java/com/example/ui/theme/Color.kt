@@ -2,29 +2,29 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Sleek Premium Health Intelligence Colors (Active Pro Orange, Carbon Black, Pure White, & Vibrant Red)
-val SleekBackground = Color(0xFFF8FAFC) // Slate 50 (Clean professional light slate)
-val SleekOnBackground = Color(0xFF121212) // Slate 900 (Carbon black)
-val SleekSurface = Color(0xFFFFFFFF) // Pure White surface cards
-val SleekOnSurface = Color(0xFF121212)
+// Sleek Premium Health Intelligence Colors (Pitch Black, Matte Zinc, Pure White, Emerald Green)
+val SleekBackground = Color(0xFF09090B) // Deep Pitch Black Onyx
+val SleekOnBackground = Color(0xFFFAFAFA) // Frosty White Text
+val SleekSurface = Color(0xFF18181B) // Zinc 900 Surface
+val SleekOnSurface = Color(0xFFFAFAFA)
 
-val SleekPrimary = Color(0xFFFF5722) // Active Pro Athletic Orange (Energetic primary)
+val SleekPrimary = Color(0xFF10B981) // Cal.ai Gorgeous Emerald Mint Green
 val SleekOnPrimary = Color(0xFFFFFFFF)
-val SleekPrimaryContainer = Color(0xFFFBE9E7) // Soft Orange / Coral 50
-val SleekOnPrimaryContainer = Color(0xFFD84315) // Deep Rust/Orange
+val SleekPrimaryContainer = Color(0xFF064E3B) // Deep Emerald Forest Green
+val SleekOnPrimaryContainer = Color(0xFFFAFAFA)
 
-val SleekSecondary = Color(0xFF1E1E1E) // Matte Carbon Black (High-contrast focus points)
-val SleekOnSecondary = Color(0xFFFFFFFF)
-val SleekSecondaryContainer = Color(0xFFF1F5F9) // Slate 100 (Clean grey container)
-val SleekOnSecondaryContainer = Color(0xFF1E293B) // Slate 800
+val SleekSecondary = Color(0xFF27272A) // Zinc 800 Interactive
+val SleekOnSecondary = Color(0xFFFAFAFA)
+val SleekSecondaryContainer = Color(0xFF27272A) // Zinc 800 Container
+val SleekOnSecondaryContainer = Color(0xFFE4E4E7) // Zinc 200
 
-val SleekTertiary = Color(0xFFD32F2F) // Vibrant Alert Red (Metrics, errors, alarm indicators)
-val SleekTertiaryContainer = Color(0xFFFFEBEE) // Soft Red accent
-val SleekOnTertiaryContainer = Color(0xFFC62828)
+val SleekTertiary = Color(0xFFEF4444) // Bright Semantics Red
+val SleekTertiaryContainer = Color(0xFF451A03)
+val SleekOnTertiaryContainer = Color(0xFFFCA5A5)
 
-val SleekOutline = Color(0xFFE2E8F0) // slate 200 (Precision outline)
-val SleekOnSurfaceVariant = Color(0xFF475569) // slate 600 (Muted readable text)
+val SleekOutline = Color(0xFF27272A) // Zinc 800 sleek outline
+val SleekOnSurfaceVariant = Color(0xFFA1A1AA) // Zinc 400 Readable subtext
 
 val SleekError = Color(0xFFEF4444)
-val SleekErrorContainer = Color(0xFFFEE2E2)
+val SleekErrorContainer = Color(0xFF7F1D1D)
 
